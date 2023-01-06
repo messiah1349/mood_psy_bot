@@ -1,0 +1,9 @@
+bd_directory: data/
+bd_name: main.db
+
+menu_naming:
+  activate: Activate
+  deactivate: Deactivate
+  settings: Settings
+  change_frequency: Change frequency
+  change_notification_time: Change notifications time

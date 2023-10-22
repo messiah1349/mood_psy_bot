@@ -1,7 +1,7 @@
 import os
 import sys
 
-from sqlalchemy import create_engine, Column, Integer, String, DATETIME, Float, BOOLEAN
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, BOOLEAN
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.ext.declarative import declarative_base
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
@@ -18,7 +18,7 @@ class Mark(Base):
     id = Column(Integer, primary_key=True)
     telegram_id = Column(Integer)
     mark = Column(Integer)
-    mark_time = Column(DATETIME)
+    mark_time = Column(DateTime)
 
 
 class User(Base):
@@ -31,8 +31,7 @@ class User(Base):
     minute = Column(Integer)
     active_flag = Column(BOOLEAN)
 
-
-if __name__ == '__main__':
+def initialize_bd() -> None:
 
     CONFIG_PATH = ROOT_DIR + '/configs/config.yaml'
     config = ut.read_config(CONFIG_PATH)
@@ -44,7 +43,11 @@ if __name__ == '__main__':
 
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{ROOT_DIR}/{bd_directory}{bd_name}"
 
-    engine = create_engine(SQLALCHEMY_DATABASE_URI, echo=True)
+
+    engine = create_engine(SQLALCHEMY_DATABASE_URI, echo=False)
     if not database_exists(engine.url):
         create_database(engine.url)
     Base.metadata.create_all(engine)
+
+    return
+

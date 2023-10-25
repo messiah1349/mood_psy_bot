@@ -10,7 +10,7 @@ def activate() -> ReplyKeyboardMarkup:
         [menu_names.activate]
     ]
 
-    return ReplyKeyboardMarkup(keyboard)
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
 def main_menu() -> ReplyKeyboardMarkup:
@@ -18,7 +18,7 @@ def main_menu() -> ReplyKeyboardMarkup:
         [menu_names.settings]
     ]
 
-    return ReplyKeyboardMarkup(keyboard)
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
 def settings(active_flag: bool) -> ReplyKeyboardMarkup:
@@ -31,7 +31,7 @@ def settings(active_flag: bool) -> ReplyKeyboardMarkup:
     else:
         keyboard.append([menu_names.activate])
 
-    return ReplyKeyboardMarkup(keyboard)
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
 def get_inline_mark() -> InlineKeyboardMarkup:
@@ -44,6 +44,6 @@ def get_inline_mark() -> InlineKeyboardMarkup:
     return markup
 
 
-def dzyn_keyboard() -> InlineKeyboardMarkup:
-    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("🥂", callback_data='dzyn')]])
+def dzyn_keyboard() -> inlinekeyboardmarkup:
+    reply_markup = inlinekeyboardmarkup([[inlinekeyboardbutton("🥂", callback_data='dzyn')]])
     return reply_markup

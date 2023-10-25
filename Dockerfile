@@ -1,6 +1,6 @@
 FROM python:3.10-slim-buster
 
-ENV TZ=Asia/Yerevan
+ENV TZ=Europe/Helsinki
 
 WORKDIR /code
 
@@ -12,7 +12,5 @@ COPY . .
 
 ENV MOOD_PSY_BOT_TOKEN=$MOOD_PSY_BOT_TOKEN
 ENV PYTHONPATH=/code/
-
-RUN python /code/db/tables.py
 
 CMD ["python", "/code/main.py"]

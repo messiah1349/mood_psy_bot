@@ -15,6 +15,7 @@ import pytz
 
 import lib.keyboards as kb
 import lib.utils as ut
+from configs.constants import TZ
 from lib.backend import Backend
 
 menu_names = ut.get_menu_names()
@@ -22,6 +23,12 @@ menu_names = ut.get_menu_names()
 # Enable logging
 logger = logging.getLogger(__name__)
 
+
+chose_time_text = """Please input start hour, end hour, frequency and notification minute:
+
+For example: '11 18 3 15' will notify you every day at 11:15, 14:15 and 17:15"""
+
+chose_move_text = "⚙️  chose the move:"
 
 class Client:
 
@@ -52,12 +59,12 @@ class Client:
 
         if user_info.active_flag:
 
-            text = f"from {user_info.start_hour} to {user_info.end_hour} every {user_info.frequency} hour"
+            text = f"🔔 from {user_info.start_hour} to {user_info.end_hour} every {user_info.frequency} hour"
             text += f" at {user_info.minute} minutes"
 
             return text
         else:
-            return "Schedule is off"
+            return "🔕 notifications is off"
 
     @staticmethod
     def reset_all_user_jobs(user_id, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -76,7 +83,7 @@ class Client:
         job = context.job
         user_id, hour = map(int, job.data.split('_'))
         markup = kb.get_inline_mark()
-        await context.bot.send_message(job.user_id, text=f"make mark", reply_markup=markup)
+        await context.bot.send_message(job.user_id, text=f"evaluate your condition", reply_markup=markup)
         logger.info(f"notification sent {job.user_id=}, {hour=}")
 
     def make_jobs(self, user_id: int, context: ContextTypes.DEFAULT_TYPE):
@@ -94,6 +101,8 @@ class Client:
         minute = settings.minute
         frequency = settings.frequency
 
+        notification_times = []
+
         for hour in range(start_hour, end_hour+1, frequency):
 
             mark_time = ut.time_to_utc(hour, minute)
@@ -101,8 +110,9 @@ class Client:
             days = (0, 1, 2, 3, 4, 5, 6)
             context.job_queue.run_daily(self.notification, mark_time, user_id=user_id, days=days, name=name, data=name)
             logger.info(f"create job for {user_id=} {hour=}, utc:{mark_time=}")
+            notification_times.append(mark_time)
 
-        return True
+        return notification_times
 
     def initialize_jobs(self) -> None:
         response = self.backend.get_all_active_users()
@@ -149,7 +159,7 @@ class Client:
             return self.states.REGISTER_USER
 
         else:
-            text = "chose the move:"
+            text = "Welcome!"
             markup = kb.main_menu()
 
             await update.message.reply_text(
@@ -168,7 +178,7 @@ class Client:
             )
             return self.states.MAIN_MENU
 
-        text = "Please input start hour, end hour, frequency and notification minute:"
+        text = chose_time_text
         await update.message.reply_text(
             text,
             reply_markup=ReplyKeyboardRemove()
@@ -212,14 +222,19 @@ class Client:
             )
             return self.states.MAIN_MENU
 
-        if not self.make_jobs(user_id, context):
-            text = "Something crashed, reply bot admin"
+        notification_times = self.make_jobs(user_id, context)
+        if notification_times == False:
+
+            text = " crashed, reply bot admin"
             await update.message.reply_text(
                 text,
             )
             return self.states.MAIN_MENU
 
-        text = "everything is OK! Wait mark calls"
+        text = "👌 we will notify you\n"
+        # for tm in notification_times:
+        #     text += str(ut.localize(tm)) + "\n"
+        text += "Enjoy your notifications"
         markup = kb.main_menu()
         await update.message.reply_text(
             text,
@@ -240,7 +255,7 @@ class Client:
             return self.states.MAIN_MENU
 
         text = self.get_user_schedule(user_id)
-        text += "\nchose the move"
+        text += "\n" + chose_move_text
         active_flag = response.answer[0].active_flag
 
         markup = kb.settings(active_flag)
@@ -252,7 +267,7 @@ class Client:
         return self.states.SETTINGS
 
     async def move_to_change_notification_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        text = "Please input start hour, end hour, frequency and notification minute:"
+        text = chose_time_text
         await update.message.reply_text(
             text,
             reply_markup=ReplyKeyboardRemove()

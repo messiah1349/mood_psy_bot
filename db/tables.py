@@ -43,7 +43,6 @@ def initialize_bd() -> None:
 
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{ROOT_DIR}/{bd_directory}{bd_name}"
 
-
     engine = create_engine(SQLALCHEMY_DATABASE_URI, echo=False)
     if not database_exists(engine.url):
         create_database(engine.url)

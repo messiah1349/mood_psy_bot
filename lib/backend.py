@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from dataclasses import dataclass
 from typing import Any
 from datetime import datetime
@@ -43,6 +43,25 @@ class MarkProcessor(TableProcessor):
             logger.error(f"{mark=} from {telegram_id=} \
             was not inserted to DB, exception - {e}")
             return Response(1, e)
+
+    def select_marks_for_user(self, telegram_id: str, date_start: datetime, date_end: datetime) -> Response:
+
+        try:
+            with self.sessionmaker() as session:
+                stmt = select(Mark)\
+                        .where(Mark.telegram_id==telegram_id)\
+                        .where(Mark.mark_time>=date_start)\
+                        .where(Mark.mark_time<=date_end)
+
+                data = session.scalars(stmt).all()
+
+                # result = session.scalar(data)
+
+            return Response(0, data)
+        except Exception as e:
+            logger.error(
+                f"marks for {telegram_id=} were not executed")
+            return Response(1, str(e))
 
 
 class UserProcessor(TableProcessor):
@@ -155,6 +174,7 @@ class UserProcessor(TableProcessor):
             return Response(1, e)
 
 
+
 class Backend:
 
     def __init__(self, db_path: str):
@@ -186,3 +206,6 @@ class Backend:
 
     def get_all_active_users(self):
         return self.user_processor.get_all_active_users()
+
+    def get_last_marks(self, telegram_id, date_start, date_end) -> Response:
+        return self.mark_processor.select_marks_for_user(telegram_id, date_start, date_end)

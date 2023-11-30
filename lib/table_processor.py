@@ -40,6 +40,7 @@ class TableProcessor:
     def __init__(self, engine):
         session_factory = sessionmaker(bind=engine)
         self.Session = scoped_session(session_factory)
+        self.sessionmaker = sessionmaker(engine)
 
     @db_selector
     def get_query_result(self, query: "sqlalchemy.orm.query.Query") -> list["table_model"]:

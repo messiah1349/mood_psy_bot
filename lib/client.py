@@ -44,6 +44,7 @@ class Client:
     def __init__(self, token: str, bd_path: str):
         self.backend = Backend(bd_path)
         self.application = Application.builder().token(token).build()
+        self.job_queue = self.application.job_queue
         self.states = self.get_states()
 
     def get_states(self):
@@ -334,6 +335,21 @@ class Client:
     async def done(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
+    async def test_repeat(self, context):
+        start_time = datetime(2023, 12, 1)
+        end_time = datetime(2023, 12, 8)
+        resp = self.backend.get_users_with_activity(start_time, end_time)
+        users = resp.answer
+        for user in users:
+            resp = self.backend.get_last_marks(user, start_time, end_time)
+            last_marks = resp.answer
+            for mark in last_marks:
+                print(mark.mark)
+            await context.bot.send_message(chat_id=user, text='ty_pidor')
+
+    def add_repeat_jobs(self):
+        self.job_queue.run_repeating(self.test_repeat, interval=10, first=5)
+
     def build_conversation_handler(self):
         conv_handler = ConversationHandler(
             allow_reentry=True,
@@ -370,4 +386,6 @@ class Client:
         mark_handler = CallbackQueryHandler(self.proceed_mark_callback, pattern="^mark=")
         self.application.add_handler(dzyn_handler)
         self.application.add_handler(mark_handler)
+        self.add_repeat_jobs()
         self.application.run_polling(drop_pending_updates=True)
+

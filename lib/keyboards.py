@@ -44,6 +44,6 @@ def get_inline_mark() -> InlineKeyboardMarkup:
     return markup
 
 
-def dzyn_keyboard() -> inlinekeyboardmarkup:
-    reply_markup = inlinekeyboardmarkup([[inlinekeyboardbutton("🥂", callback_data='dzyn')]])
+def dzyn_keyboard() -> InlineKeyboardMarkup:
+    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("🥂", callback_data='dzyn')]])
     return reply_markup

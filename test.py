@@ -1,3 +1,4 @@
+from lib.chart_builder import MonthDrawer, WeekDrawer
 from sqlalchemy import create_engine, select
 from lib.backend import MarkProcessor, UserProcessor, Backend
 from datetime import datetime
@@ -13,42 +14,22 @@ import asyncio
 
 bd_path = '/data/main.db'
 
-date_start = datetime(2023, 11, 28)
-date_end = datetime(2023, 11, 30, 22)
+date_start = datetime(2023, 11, 24)
+date_end = datetime(2023, 12, 1, 22)
 
 backend = Backend(bd_path)
 #'😐', '🤔', '😄', '😎', '🐕'
 res = backend.get_last_marks(telegram_id=256856117, date_start=date_start, date_end=date_end).answer
 
 x_dates = [el.mark_time for el in res]
-x_nums = dates.date2num(x_dates)
+# x_nums = dates.date2num(x_dates)
 y = [el.mark + 1 for el in res]
 
-trend = np.polyfit(x_nums, y, 1)
-fit = np.poly1d(trend)
+# month_drawer = MonthDrawer()
+# buf = month_drawer.draw(x_dates, y)
 
-rule_major = dates.rrulewrapper(dates.DAILY, interval=1)
-loc_major = dates.RRuleLocator(rule_major)
-rule_minor = dates.rrulewrapper(dates.HOURLY, interval=4)
-loc_minor = dates.RRuleLocator(rule_minor)
-formatter = dates.DateFormatter('%m/%d')
-
-fig, ax = plt.subplots()
-plt.plot(x_dates, y, 'r*', markersize=12)
-
-x_fit = np.linspace(x_nums.min(), x_nums.max())
-plt.plot(dates.num2date(x_fit), fit(x_fit), "r--")
-
-ax.xaxis.set_major_locator(loc_major)
-ax.xaxis.set_minor_locator(loc_minor)
-ax.xaxis.set_major_formatter(formatter)
-ax.xaxis.set_tick_params(rotation=30, labelsize=10)
-ax.set_ylim(0.5, 5.5)
-
-buf = io.BytesIO()
-plt.savefig(buf, format='png')
-buf.seek(0)
-# im = Image.open(buf)
+week_drawer = WeekDrawer()
+buf = week_drawer.draw(x_dates, y)
 
 async def send_photo():
     bot = telegram.Bot(token=API_TOKEN)

@@ -1,3 +1,4 @@
+from lib import utils as ut
 from lib.chart_builder import MonthDrawer, WeekDrawer
 from sqlalchemy import create_engine, select
 from lib.backend import MarkProcessor, UserProcessor, Backend
@@ -14,8 +15,10 @@ import asyncio
 
 bd_path = '/data/main.db'
 
-date_start = datetime(2023, 11, 24)
-date_end = datetime(2023, 12, 1, 22)
+# date_start = datetime(2023, 11, 24)
+# date_end = datetime(2023, 12, 1, 22)
+
+date_start, date_end = ut.get_prev_week_borders()
 
 backend = Backend(bd_path)
 #'😐', '🤔', '😄', '😎', '🐕'
@@ -35,5 +38,8 @@ async def send_photo():
     bot = telegram.Bot(token=API_TOKEN)
     await bot.send_photo(chat_id=46340594, photo=buf)
 
-asyncio.run(send_photo())
+# asyncio.run(send_photo())
+
+print(ut.get_prev_week_borders())
+print(ut.get_prev_month_borders())
 

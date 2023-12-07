@@ -4,7 +4,7 @@ from dataclasses import make_dataclass
 from configs.definitions import ROOT_DIR
 from configs.constants import TZ
 import datetime as dt
-#from datetime import datetime, time
+from dateutil.relativedelta import relativedelta
 
 
 def read_config(config_path: str) -> dict:
@@ -36,6 +36,29 @@ def time_to_utc(hour: int, minute: int) -> dt.time:
     local_dt = local_dt.replace(hour=hour, minute=minute, second=0)
     utc_time = local_dt.astimezone(pytz.utc).time()
     return utc_time
+
+def date_to_datetime(date_object: dt.date) -> dt.datetime:
+    return dt.datetime.fromordinal(date_object.toordinal())
+
+def get_prev_week_borders() -> tuple[dt.datetime, dt.datetime]:
+    current_day = dt.date.today()
+    prev_week_start = current_day - dt.timedelta(days=7 + current_day.weekday())
+    prev_week_end = prev_week_start + dt.timedelta(days=7)
+    prev_week_start = date_to_datetime(prev_week_start)
+    prev_week_end = date_to_datetime(prev_week_end)
+    return prev_week_start, prev_week_end
+
+def get_prev_month_borders() -> tuple[dt.datetime, dt.datetime]:
+    current_day = dt.date.today()
+    prev_month_day = current_day - dt.timedelta(days=15)
+    prev_month_start = prev_month_day.replace(day=1)
+    prev_month_end = prev_month_start + relativedelta(months=1)
+    prev_month_start = date_to_datetime(prev_month_start)
+    prev_month_end = date_to_datetime(prev_month_end)
+    return prev_month_start, prev_month_end
+
+    
+
 
 
 # def localize(datetime_: dt.time):

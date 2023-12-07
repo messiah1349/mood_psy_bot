@@ -1,5 +1,5 @@
 import logging
-from telegram import ReplyKeyboardRemove, Update, CallbackQuery
+from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -10,13 +10,12 @@ from telegram.ext import (
     filters
 )
 from dataclasses import dataclass
-from datetime import datetime, time
-import pytz
 
 import lib.keyboards as kb
 import lib.utils as ut
-from configs.constants import TZ
+from configs.constants import week_repeat_time, month_repeat_time
 from lib.backend import Backend
+from lib.chart_builder import WeekDrawer, MonthDrawer, ChartBuilder
 
 menu_names = ut.get_menu_names()
 
@@ -335,20 +334,31 @@ class Client:
     async def done(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
-    async def test_repeat(self, context):
-        start_time = datetime(2023, 12, 1)
-        end_time = datetime(2023, 12, 8)
+    async def build_report(self, context, drawer: ChartBuilder, start_time: datetime, end_time: datetime) -> None:
         resp = self.backend.get_users_with_activity(start_time, end_time)
         users = resp.answer
         for user in users:
             resp = self.backend.get_last_marks(user, start_time, end_time)
             last_marks = resp.answer
-            for mark in last_marks:
-                print(mark.mark)
-            await context.bot.send_message(chat_id=user, text='ty_pidor')
+            mark_times = [mark.mark_time for mark in last_marks]
+            marks = [mark.mark for mark in last_marks]
+            chart = drawer.draw(mark_times, marks)
 
+            await context.bot.send_photo(chat_id=user, photo=chart)
+
+    async def build_week_report(self, context):
+        start_time, end_time = ut.get_prev_week_borders()
+        week_drawer = WeekDrawer()
+        await self.build_report(context, week_drawer, start_time, end_time)
+
+    async def build_month_report(self, context):
+        start_time, end_time = ut.get_prev_month_borders()
+        month_drawer = MonthDrawer()
+        await self.build_report(context, month_drawer, start_time, end_time)
+        
     def add_repeat_jobs(self):
-        self.job_queue.run_repeating(self.test_repeat, interval=10, first=5)
+        self.job_queue.run_daily(self.build_week_report, time=week_repeat_time, days=(1,))
+        self.job_queue.run_monthly(self.build_month_report, when=month_repeat_time, day=1)
 
     def build_conversation_handler(self):
         conv_handler = ConversationHandler(

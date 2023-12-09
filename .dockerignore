@@ -1,5 +1,7 @@
 notification_bot.egg-info
 venv
-.env
+*.env
 *.log
 data
+.git*
+__pycache__/

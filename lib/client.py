@@ -1,3 +1,4 @@
+from datetime import datetime, time
 import logging
 from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import (
@@ -9,6 +10,7 @@ from telegram.ext import (
     MessageHandler,
     filters
 )
+from telegram.error import BadRequest
 from dataclasses import dataclass
 
 import lib.keyboards as kb
@@ -18,6 +20,7 @@ from lib.backend import Backend
 from lib.chart_builder import WeekDrawer, MonthDrawer, ChartBuilder
 
 menu_names = ut.get_menu_names()
+texts = ut.get_texts()
 
 # Enable logging
 logger = logging.getLogger(__name__)
@@ -37,6 +40,10 @@ class Client:
         MAIN_MENU: int
         SETTINGS: int
         NOTIFICATION_TIME: int
+        SET_START_HOUR: int
+        SET_END_HOUR: int
+        SET_FREQUENCY: int
+        SET_MINUTE: int
         ACTIVATE: int
         DEACTIVATE: int
 
@@ -47,10 +54,10 @@ class Client:
         self.states = self.get_states()
 
     def get_states(self):
-        states = self.States(*range(6))
+        states = self.States(*range(10))
         return states
 
-    def get_user_schedule(self, user_id) -> str:
+    def get_user_schedule(self, user_id) -> str|bool:
 
         response = self.backend.get_setups(user_id)
         if response.status or len(response.answer) != 1:
@@ -59,8 +66,15 @@ class Client:
 
         if user_info.active_flag:
 
-            text = f"🔔 from {user_info.start_hour} to {user_info.end_hour} every {user_info.frequency} hour"
-            text += f" at {user_info.minute} minutes"
+            notification_times = self.get_notification_time_list(
+                user_info.start_hour,
+                user_info.end_hour,
+                user_info.minute,
+                user_info.frequency,
+            )
+
+            text = f"🔔:\n    "
+            text += "\n    ".join(notification_times)
 
             return text
         else:
@@ -144,7 +158,7 @@ class Client:
             await update.message.reply_text(
                 text,
             )
-            return
+            return 0
 
         user_existence = response.answer
 
@@ -168,6 +182,110 @@ class Client:
             )
             return self.states.MAIN_MENU
 
+    async def ask_set_start_hour(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        text = texts.set_start_hour
+        await update.message.reply_text(
+            text,
+            reply_markup=kb.get_hours(label='start')
+        )
+
+        return self.states.MAIN_MENU
+
+    async def proceed_start_hour_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+
+        hour = int(query.data.split('=')[1])
+        # user_id = query.from_user.id
+
+        context.user_data['start_hour'] = hour
+
+        text = texts.set_end_hour
+        markup = kb.get_hours(label='end')
+        await query.edit_message_text(text=text, reply_markup=markup)
+
+        return self.states.MAIN_MENU
+
+    async def proceed_end_hour_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+
+        hour = int(query.data.split('=')[1])
+        # user_id = query.from_user.id
+
+        if hour < context.user_data['start_hour']:
+            text = texts.end_hour_less_start_error
+            markup = kb.get_hours(label='end')
+            await query.edit_message_text(text=text, reply_markup=markup)
+            return self.states.MAIN_MENU
+
+        context.user_data['end_hour'] = hour
+
+        text = texts.set_frequency
+        markup = kb.get_frequencies()
+        await query.edit_message_text(text=text, reply_markup=markup)
+
+        return self.states.MAIN_MENU
+
+    async def proceed_frequencies_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+
+        frequency = int(query.data.split('=')[1])
+        user_id = query.from_user.id
+
+        self.backend.set_frequency(user_id, frequency)
+        context.user_data['frequency'] = frequency
+
+        text = texts.set_minute
+        markup = kb.get_minutes()
+        await query.edit_message_text(text=text, reply_markup=markup)
+
+        return self.states.MAIN_MENU
+
+    @staticmethod
+    def get_notification_time_list(start_hour: int, end_hour: int, minute: int, frequency: int) -> list[str]:
+        notification_times = []
+
+        for hour in range(start_hour, end_hour + 1, frequency):
+            notification_time = time(hour, minute).strftime("%H:%M")
+            notification_times.append(notification_time)
+
+        return notification_times
+
+    async def proceed_minute_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+
+        minute = int(query.data.split('=')[1])
+        user_id = query.from_user.id
+        start_hour=context.user_data['start_hour']
+        end_hour=context.user_data['end_hour']
+        frequency=context.user_data['frequency']
+
+        self.backend.set_notifications_time(
+                telegram_id=user_id, 
+                start_hour=start_hour,
+                end_hour=end_hour,
+                minute=minute,
+        )
+        context.user_data['minute'] = minute
+
+        text = texts.time_setup_finish
+
+        notification_times = self.get_notification_time_list(
+                start_hour=start_hour,
+                end_hour=end_hour,
+                minute=minute,
+                frequency=frequency,
+        )
+        text += '\n    '
+        text += "\n    ".join(notification_times)
+        markup = kb.dzyn_keyboard()
+        await query.edit_message_text(text=text, reply_markup=markup)
+
+        return self.states.MAIN_MENU
+
     async def proceed_register_user(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         user_id = update.message.from_user.id
         response = self.backend.add_user(user_id)
@@ -178,13 +296,7 @@ class Client:
             )
             return self.states.MAIN_MENU
 
-        text = chose_time_text
-        await update.message.reply_text(
-            text,
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-        return self.states.NOTIFICATION_TIME
+        return await self.ask_set_start_hour(update, context)
 
     async def proceed_notification_time(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         message_text = update.message.text
@@ -232,8 +344,6 @@ class Client:
             return self.states.MAIN_MENU
 
         text = "👌 we will notify you\n"
-        # for tm in notification_times:
-        #     text += str(ut.localize(tm)) + "\n"
         text += "Enjoy your notifications"
         markup = kb.main_menu()
         await update.message.reply_text(
@@ -344,7 +454,10 @@ class Client:
             marks = [mark.mark for mark in last_marks]
             chart = drawer.draw(mark_times, marks)
 
-            await context.bot.send_photo(chat_id=user, photo=chart)
+            try:
+                await context.bot.send_photo(chat_id=user, photo=chart)
+            except BadRequest as e:
+                logger.error("bad request for chat_id = {user}, Exception: {e}")
 
     async def build_week_report(self, context):
         start_time, end_time = ut.get_prev_week_borders()
@@ -377,7 +490,7 @@ class Client:
                     MessageHandler(filters.Regex(ut.name_to_reg(menu_names.activate)), self.proceed_activate),
                     MessageHandler(filters.Regex(ut.name_to_reg(menu_names.deactivate)), self.proceed_deactivate),
                     MessageHandler(filters.Regex(ut.name_to_reg(menu_names.change_notification_time)),
-                                   self.move_to_change_notification_time),
+                                   self.ask_set_start_hour),
                 ],
                 self.states.NOTIFICATION_TIME: [
                     MessageHandler(filters.TEXT, self.proceed_notification_time)
@@ -388,14 +501,24 @@ class Client:
 
         return conv_handler
 
+    def add_callbacks(self):
+        callbacks = [
+            CallbackQueryHandler(self.process_dzyn_callback, pattern=ut.name_to_reg('dzyn')),
+            CallbackQueryHandler(self.proceed_mark_callback, pattern="^mark="),
+            CallbackQueryHandler(self.proceed_start_hour_callback, pattern="^start_hour="),
+            CallbackQueryHandler(self.proceed_end_hour_callback, pattern="^end_hour="),
+            CallbackQueryHandler(self.proceed_frequencies_callback, pattern="^freq="),
+            CallbackQueryHandler(self.proceed_minute_callback, pattern="^minute="),
+        ]
+        for callback in callbacks:
+            self.application.add_handler(callback)
+
+
     def build_application(self):
         self.initialize_jobs()
         conv_handler = self.build_conversation_handler()
         self.application.add_handler(conv_handler)
-        dzyn_handler = CallbackQueryHandler(self.process_dzyn_callback, pattern=ut.name_to_reg('dzyn'))
-        mark_handler = CallbackQueryHandler(self.proceed_mark_callback, pattern="^mark=")
-        self.application.add_handler(dzyn_handler)
-        self.application.add_handler(mark_handler)
+        self.add_callbacks()
         self.add_repeat_jobs()
         self.application.run_polling(drop_pending_updates=True)
 

@@ -51,7 +51,7 @@ class ChartBuilder(ABC):
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
         buf.seek(0)
-        plt.close()
+        plt.close(fig)
 
         return buf
         

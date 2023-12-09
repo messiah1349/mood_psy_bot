@@ -24,6 +24,13 @@ def get_menu_names():
 
     return menu_names
 
+def get_texts():
+    text_config = config['texts']
+    Texts = make_dataclass("Texts", [(eng, str, rus) for eng, rus in text_config.items()])
+    texts = Texts()
+
+    return texts
+
 
 def name_to_reg(name: str) -> str:
     return f"^{name}$"

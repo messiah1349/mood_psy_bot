@@ -44,6 +44,47 @@ def get_inline_mark() -> InlineKeyboardMarkup:
     return markup
 
 
-def dzyn_keyboard() -> inlinekeyboardmarkup:
-    reply_markup = inlinekeyboardmarkup([[inlinekeyboardbutton("🥂", callback_data='dzyn')]])
+def dzyn_keyboard() -> InlineKeyboardMarkup:
+    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("🥂", callback_data='dzyn')]])
     return reply_markup
+
+
+def get_hours(label: str) -> InlineKeyboardMarkup:
+    keyboard = []
+    curr_row = []
+    for hour in range(24):
+        str_hour = '0' + str(hour) if hour < 10 else str(hour)
+        button = InlineKeyboardButton(str_hour, callback_data=f"{label}_hour={hour}")
+        curr_row.append(button)
+        if hour % 4 == 3:
+            keyboard.append(curr_row)
+            curr_row = []
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    return reply_markup
+
+def get_frequencies() -> InlineKeyboardMarkup:
+    keyboard = []
+    curr_row = []
+    for freq in range(12):
+        button = InlineKeyboardButton(str(freq), callback_data=f"freq={freq}")
+        curr_row.append(button)
+        if freq % 4 == 3:
+            keyboard.append(curr_row)
+            curr_row = []
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    return reply_markup
+
+def get_minutes() -> InlineKeyboardMarkup:
+    keyboard = []
+    curr_row = []
+    for minute in range(0, 60, 5):
+        str_minute = '0' + str(minute) if minute < 10 else str(minute)
+        button = InlineKeyboardButton(str_minute, callback_data=f"minute={minute}")
+        curr_row.append(button)
+        if minute % 20 == 15:
+            keyboard.append(curr_row)
+            curr_row = []
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    return reply_markup
+

@@ -7,3 +7,11 @@ menu_naming:
   settings: Settings
   change_frequency: Change frequency
   change_notification_time: Change notifications time
+
+texts:
+  set_start_hour: Please choose a hour from what time you will recieve notification
+  set_end_hour: Good! Please choose a hour when you will stop to recieve notifications
+  end_hour_less_start_error: Your end hour less than your start hour, please, choose the correct value
+  set_frequency: Nice! Please chose how often we will notify you. Every hour, every 2 hours or so one
+  set_minute: Ok! Please chose a minute when you will recieve notification every time
+  time_setup_finish: Greate! We will notify you every day in

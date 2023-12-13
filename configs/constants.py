@@ -1,8 +1,14 @@
 import os
+import pytz
+from datetime import time
 from dotenv import load_dotenv
 
 load_dotenv()
 
 TZ = 'Europe/Helsinki'
 API_TOKEN = os.getenv("MOOD_PSY_BOT_TOKEN", 'aaa')
-print(f'{API_TOKEN=}')
+
+
+tz = pytz.timezone(TZ)
+month_repeat_time = time(12, 18, 30, tzinfo=tz)
+week_repeat_time = time(12, 12, 50, tzinfo=tz)

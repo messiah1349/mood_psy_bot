@@ -189,7 +189,7 @@ class Client:
             reply_markup=kb.get_hours(label='start')
         )
 
-        return self.states.MAIN_MENU
+        return self.states.SETTINGS
 
     async def proceed_start_hour_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
@@ -204,7 +204,7 @@ class Client:
         markup = kb.get_hours(label='end')
         await query.edit_message_text(text=text, reply_markup=markup)
 
-        return self.states.MAIN_MENU
+        return self.states.SETTINGS
 
     async def proceed_end_hour_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
@@ -217,7 +217,7 @@ class Client:
             text = texts.end_hour_less_start_error
             markup = kb.get_hours(label='end')
             await query.edit_message_text(text=text, reply_markup=markup)
-            return self.states.MAIN_MENU
+            return self.states.SETTINGS
 
         context.user_data['end_hour'] = hour
 
@@ -225,7 +225,7 @@ class Client:
         markup = kb.get_frequencies()
         await query.edit_message_text(text=text, reply_markup=markup)
 
-        return self.states.MAIN_MENU
+        return self.states.SETTINGS
 
     async def proceed_frequencies_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
@@ -241,7 +241,7 @@ class Client:
         markup = kb.get_minutes()
         await query.edit_message_text(text=text, reply_markup=markup)
 
-        return self.states.MAIN_MENU
+        return self.states.SETTINGS
 
     @staticmethod
     def get_notification_time_list(start_hour: int, end_hour: int, minute: int, frequency: int) -> list[str]:
@@ -263,12 +263,32 @@ class Client:
         end_hour=context.user_data['end_hour']
         frequency=context.user_data['frequency']
 
-        self.backend.set_notifications_time(
+        response_1 = self.backend.set_notifications_time(
                 telegram_id=user_id, 
                 start_hour=start_hour,
                 end_hour=end_hour,
                 minute=minute,
         )
+
+        response_2 = self.backend.set_frequency(user_id, frequency)
+        response_3 = self.backend.set_activity(user_id, activity=True)
+
+        if response_1.status or response_2.status or response_3.status:
+            text = "Something crashed, reply bot admin"
+            await update.message.reply_text(
+                text,
+            )
+            return self.states.MAIN_MENU
+
+        notifications = self.make_jobs(user_id, context)
+        if notifications == False:
+
+            text = " crashed, reply bot admin"
+            await update.message.reply_text(
+                text,
+            )
+            return self.states.MAIN_MENU
+
         context.user_data['minute'] = minute
 
         text = texts.time_setup_finish
@@ -284,7 +304,12 @@ class Client:
         markup = kb.dzyn_keyboard()
         await query.edit_message_text(text=text, reply_markup=markup)
 
-        return self.states.MAIN_MENU
+        text = 'Chose the motion'
+        markup = kb.settings(active_flag=True)
+
+        await self.application.bot.send_message(chat_id=user_id, text=text, reply_markup=markup)
+
+        return self.states.SETTINGS
 
     async def proceed_register_user(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         user_id = update.message.from_user.id
@@ -484,7 +509,11 @@ class Client:
                     MessageHandler(filters.Regex(ut.name_to_reg(menu_names.activate)), self.proceed_register_user),
                 ],
                 self.states.MAIN_MENU: [
-                    MessageHandler(filters.Regex(ut.name_to_reg(menu_names.settings)), self.push_to_settings)
+                    MessageHandler(filters.Regex(ut.name_to_reg(menu_names.settings)), self.push_to_settings),
+                    MessageHandler(filters.Regex(ut.name_to_reg(menu_names.activate)), self.proceed_activate),
+                    MessageHandler(filters.Regex(ut.name_to_reg(menu_names.deactivate)), self.proceed_deactivate),
+                    MessageHandler(filters.Regex(ut.name_to_reg(menu_names.change_notification_time)),
+                                   self.ask_set_start_hour),
                 ],
                 self.states.SETTINGS: [
                     MessageHandler(filters.Regex(ut.name_to_reg(menu_names.activate)), self.proceed_activate),
